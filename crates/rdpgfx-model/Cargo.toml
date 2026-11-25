@@ -1,0 +1,11 @@
+[package]
+name = "rdpgfx-model"
+description = "Protocol-neutral RDPGFX types and CPU reference for AVC444 and colour conversion"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+rayon.workspace = true
+serde.workspace = true

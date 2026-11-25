@@ -1,0 +1,36 @@
+[workspace]
+resolver = "3"
+members = ["crates/rdpgfx-model", "crates/rdpgfx-fixtures", "crates/rdpgfx-gpu", "crates/rdpgfx-replay", "crates/rdp-session", "crates/rmc", "crates/rdp-viewer", "crates/rdp-clipboard"]
+
+[workspace.package]
+edition = "2024"
+version = "1.0.0"
+license = "Apache-2.0"
+repository = "https://github.com/Meejch/rmc"
+publish = false
+
+[workspace.dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+rayon = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rdpgfx-model = { path = "crates/rdpgfx-model" }
+rdpgfx-fixtures = { path = "crates/rdpgfx-fixtures" }
+ash = "0.38"
+libloading = "0.9"
+libc = "0.2"
+ffmpeg-sys-next = { version = "9", default-features = false, features = ["avcodec"] }
+ash-window = "0.13"
+raw-window-handle = "0.6"
+winit = "0.30"
+rdpgfx-gpu = { path = "crates/rdpgfx-gpu" }
+rdp-session = { path = "crates/rdp-session" }
+rdp-viewer = { path = "crates/rdp-viewer" }
+rdp-clipboard = { path = "crates/rdp-clipboard" }
+
+[profile.release]
+debug = 1
+
+[profile.test]
+opt-level = 2

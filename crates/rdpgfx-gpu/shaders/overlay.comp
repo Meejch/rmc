@@ -1,0 +1,181 @@
+#version 450
+// Overlay layer placeholder: the connection bar, drawn after the
+// session picture into the swapchain image, never into a surface. Layout of the bar:
+// [pin] [name (CPU-rendered image, kind 3)] [right group: ids from `buttons`, left to right]
+// Button ids: 0 pin, 1 minimise, 2 window/fullscreen, 3 keyboard grab, 4 disconnect,
+// 5 keep active, 6 save as favorite, 7 settings.
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0) uniform writeonly image2D target;
+// Kind 3: opaque RGBA pictures (R in the lowest byte), see OverlayImage.
+layout(set = 0, binding = 2) readonly buffer Images { uint px[]; } images;
+
+layout(push_constant) uniform Params {
+    uvec4 bar;      // bar rectangle in view pixels (l, t, r, b)
+    uint pinned;    // 1 = pinned (pin drawn highlighted); kind 2: progress 0..10000
+    int hover;      // button under the pointer (-1 none, 0 pin, 1..4 right buttons)
+    uint kind;      // 0 = bar, 1 = scroll thumb, 2 = progress, 3 = picture
+    uint grab;      // 1 = keyboard grab active (button 3 highlighted)
+    uvec4 text;     // kind 2: 16 ASCII characters, 4 per uint (little endian);
+                    // kind 3: pixel offset, width, x, y of the picture
+    uint keep;      // 1 = "keep active" on (button 5 highlighted)
+    uint buttons;   // right group, 4 bits per button id, leftmost in the lowest bits
+    uint nbuttons;
+} pc;
+
+// 3x5 pixel font for the progress text: rows top to bottom, 3 bits each (MSB left).
+uint glyph_bits(uint ch) {
+    if (ch >= 48u && ch <= 57u) {
+        const uint digits[10] = uint[10](0x7B6Fu, 0x2C97u, 0x73E7u, 0x72CFu, 0x5BC9u,
+                                         0x79CFu, 0x79EFu, 0x7249u, 0x7BEFu, 0x7BCFu);
+        return digits[ch - 48u];
+    }
+    if (ch == 37u) return 0x52a5u;  // %
+    if (ch == 58u) return 0x0410u;  // :
+    if (ch == 46u) return 0x0002u;  // .
+    if (ch == 47u) return 0x12A4u;  // /
+    return 0u;
+}
+
+uint text_char(uint i) {
+    uint word = pc.text[i / 4u];
+    return (word >> (8u * (i % 4u))) & 0xFFu;
+}
+
+const float BUTTON = 24.0;
+const float GAP = 6.0;
+
+// Left edge of slot `s` of the right group.
+float slot_x(uint s, vec2 size) {
+    return size.x - float(pc.nbuttons - s) * (BUTTON + GAP);
+}
+
+// Button id and its left edge at local position `l` (id -1 = none). Pin on the left.
+int button_at(vec2 l, vec2 size, out float x0) {
+    x0 = GAP;
+    if (l.y < 4.0 || l.y >= 4.0 + BUTTON) return -1;
+    if (l.x >= GAP && l.x < GAP + BUTTON) return 0;
+    for (uint s = 0u; s < pc.nbuttons; s++) {
+        x0 = slot_x(s, size);
+        if (l.x >= x0 && l.x < x0 + BUTTON) return int((pc.buttons >> (4u * s)) & 15u);
+    }
+    return -1;
+}
+
+// Simple glyph of button `b` at local button coordinates `q` (0..24).
+bool glyph(int b, vec2 q) {
+    q = floor(q) + 0.5;
+    if (b == 0) {  // pin: head and needle
+        return distance(q, vec2(12.0, 9.0)) < 4.5 || (abs(q.x - 12.0) < 1.0 && q.y >= 12.0 && q.y < 20.0);
+    }
+    if (b == 1) {  // minimise: bar at the bottom
+        return q.x >= 6.0 && q.x < 18.0 && q.y >= 15.0 && q.y < 17.0;
+    }
+    if (b == 2) {  // window <-> fullscreen: frame
+        bool outer = q.x >= 5.0 && q.x < 19.0 && q.y >= 6.0 && q.y < 18.0;
+        bool inner = q.x >= 7.0 && q.x < 17.0 && q.y >= 9.0 && q.y < 16.0;
+        return outer && !inner;
+    }
+    if (b == 3) {  // keyboard grab: outline with key dots
+        bool outer = q.x >= 4.0 && q.x < 20.0 && q.y >= 7.0 && q.y < 17.0;
+        bool inner = q.x >= 5.0 && q.x < 19.0 && q.y >= 8.0 && q.y < 16.0;
+        bool keys = inner && mod(q.x - 6.0, 3.0) < 1.0 && (q.y >= 9.0 && q.y < 10.0 || q.y >= 12.0 && q.y < 13.0);
+        bool space = q.x >= 8.0 && q.x < 16.0 && q.y >= 14.0 && q.y < 15.0;
+        return (outer && !inner) || keys || space;
+    }
+    if (b == 5) {  // keep active: cup with handle and steam
+        bool cup = q.x >= 6.0 && q.x < 15.0 && q.y >= 11.0 && q.y < 19.0;
+        bool hollow = q.x >= 7.0 && q.x < 14.0 && q.y >= 11.0 && q.y < 18.0;
+        bool handle = (q.x >= 15.0 && q.x < 18.0 && (q.y >= 12.0 && q.y < 13.0 || q.y >= 16.0 && q.y < 17.0)) ||
+                      (q.x >= 17.0 && q.x < 18.0 && q.y >= 12.0 && q.y < 17.0);
+        bool steam = (q.x >= 9.0 && q.x < 10.0 || q.x >= 12.0 && q.x < 13.0) && q.y >= 5.0 && q.y < 9.0;
+        return (cup && !hollow) || handle || steam;
+    }
+    if (b == 6) {  // save as favorite: star outline
+        vec2 p = q - vec2(12.0, 12.5);
+        float a = atan(p.y, p.x) + 1.5708;
+        float r = length(p);
+        // radius of a five-pointed star at angle a: between 3.6 (inner) and 8 (tips)
+        float k = abs(mod(a * 5.0 / 6.28318, 1.0) - 0.5) * 2.0;
+        float edge = mix(3.6, 8.0, k * k);
+        return r < edge && r > edge - 1.8;
+    }
+    if (b == 7) {  // settings: gear (ring with teeth)
+        vec2 p = q - 12.0;
+        float r = length(p);
+        float a = atan(p.y, p.x);
+        bool tooth = mod(a * 8.0 / 6.28318 + 0.25, 1.0) < 0.5 && r < 8.5;
+        return (r < 6.5 && r > 2.5) || (tooth && r >= 6.0);
+    }
+    // close: X
+    vec2 d = q - 12.0;
+    return abs(d.x) < 6.0 && abs(d.y) < 6.0 && (abs(d.x - d.y) < 1.2 || abs(d.x + d.y) < 1.2);
+}
+
+void main() {
+    uvec2 px = pc.bar.xy + gl_GlobalInvocationID.xy;
+    if (px.x >= pc.bar.z || px.y >= pc.bar.w) return;
+    vec2 size = vec2(pc.bar.zw - pc.bar.xy);
+    vec2 l = vec2(px - pc.bar.xy);
+    if (pc.kind == 2u) {  // transfer progress strip below the bar, text centered
+        float done = float(pc.pinned) / 10000.0 * size.x;
+        bool edge = l.y < 1.0 || l.y >= size.y - 1.0 || l.x < 1.0 || l.x >= size.x - 1.0;
+        vec3 c = l.x < done ? vec3(0.24, 0.55, 0.99) : vec3(0.17);
+        if (edge) c = vec3(0.35);
+        // cancel button: 20 px at the right end with an X
+        if (l.x >= size.x - 20.0) {
+            c = vec3(0.5, 0.2, 0.2);
+            vec2 d = vec2(l.x - (size.x - 10.0), l.y - size.y * 0.5) + 0.5;
+            if (abs(d.x) < 4.5 && abs(d.y) < 4.5 && (abs(d.x - d.y) < 1.2 || abs(d.x + d.y) < 1.2))
+                c = vec3(0.95);
+            imageStore(target, ivec2(px), vec4(c, 1.0));
+            return;
+        }
+        // text: glyphs 3x5 scaled by 2 (6x10 px), advance 8 px
+        uint n = 0u;
+        for (uint i = 0u; i < 16u; i++) {
+            if (text_char(i) != 32u) n = i + 1u;
+        }
+        float w = float(n) * 8.0 - 2.0;
+        vec2 o = vec2(floor((size.x - w) * 0.5), floor((size.y - 10.0) * 0.5));
+        vec2 t = l - o;
+        if (n > 0u && t.x >= 0.0 && t.y >= 0.0 && t.x < float(n) * 8.0 && t.y < 10.0) {
+            uint ci = uint(t.x) / 8u;
+            uint gx = (uint(t.x) % 8u) / 2u;
+            uint gy = uint(t.y) / 2u;
+            if (gx < 3u) {
+                uint bits = glyph_bits(text_char(ci));
+                if (((bits >> (14u - (gy * 3u + gx))) & 1u) == 1u) c = vec3(0.95);
+            }
+        }
+        imageStore(target, ivec2(px), vec4(c, 1.0));
+        return;
+    }
+    if (pc.kind == 3u) {
+        uvec2 o = pc.text.zw;
+        uint p = images.px[pc.text.x + (px.y - o.y) * pc.text.y + (px.x - o.x)];
+        vec4 c = vec4(float(p & 255u), float((p >> 8u) & 255u), float((p >> 16u) & 255u), 255.0) / 255.0;
+        imageStore(target, ivec2(px), c);
+        return;
+    }
+    if (pc.kind == 1u) {
+        bool edge = l.x < 1.0 || l.y < 1.0 || l.x >= size.x - 1.0 || l.y >= size.y - 1.0;
+        imageStore(target, ivec2(px), vec4(edge ? vec3(0.25) : vec3(0.62), 1.0));
+        return;
+    }
+    vec3 c = vec3(0.17);
+    if (l.y >= size.y - 1.0 || l.x < 1.0 || l.x >= size.x - 1.0) c = vec3(0.35);  // frame
+    float x0;
+    int b = button_at(l, size, x0);
+    if (b >= 0) {
+        c = (b == pc.hover) ? vec3(0.45) : vec3(0.28);
+        if (b == 0 && pc.pinned == 1u) c = vec3(0.24, 0.55, 0.99);
+        if (b == 3 && pc.grab == 1u) c = vec3(0.24, 0.55, 0.99);
+        if (b == 5 && pc.keep == 1u) c = vec3(0.24, 0.55, 0.99);
+        if (b == 4) c = (b == pc.hover) ? vec3(0.85, 0.25, 0.25) : vec3(0.5, 0.2, 0.2);
+        if (b == 6) c = (b == pc.hover) ? vec3(0.62, 0.5, 0.15) : vec3(0.4, 0.33, 0.12);
+        if (glyph(b, vec2(l.x - x0, l.y - 4.0))) c = vec3(0.92);
+    }
+    imageStore(target, ivec2(px), vec4(c, 1.0));
+}

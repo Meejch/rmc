@@ -1,0 +1,35 @@
+[package]
+name = "rmc"
+description = "RMC – Remote Machine Connect: libfreerdp session, GPU graphics core, Wayland views, launcher"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+publish.workspace = true
+build = "build.rs"
+
+[[bin]]
+name = "rmc"
+path = "src/main.rs"
+
+[build-dependencies]
+cc = "1"
+
+[dependencies]
+eframe = { version = "0.37", default-features = false, features = ["glow", "wayland", "x11", "default_fonts"] }
+ksni = { version = "0.3", features = ["blocking"] }
+toml = "0.9"
+png = "0.18"
+zbus = "5"
+tokio = { version = "1", features = ["rt", "sync", "time"] }
+serde.workspace = true
+libc.workspace = true
+rdp-clipboard.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+winit.workspace = true
+raw-window-handle.workspace = true
+rdp-session.workspace = true
+rdp-viewer.workspace = true
+rdpgfx-gpu.workspace = true
+rdpgfx-model.workspace = true

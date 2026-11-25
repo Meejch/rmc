@@ -1,0 +1,25 @@
+[package]
+name = "rdpgfx-gpu"
+description = "GPU core: hardware H.264 decode (FFmpeg/NVDEC), AVC444 combination and colour conversion in Vulkan compute"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+ash.workspace = true
+ash-window.workspace = true
+raw-window-handle.workspace = true
+clap.workspace = true
+ffmpeg-sys-next.workspace = true
+libloading.workspace = true
+libc.workspace = true
+rayon.workspace = true
+serde_json.workspace = true
+rdpgfx-model.workspace = true
+rdpgfx-fixtures.workspace = true
+
+[[bin]]
+name = "gpu-check"
+path = "src/bin/gpu-check.rs"

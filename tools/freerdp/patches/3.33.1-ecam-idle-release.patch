@@ -1,0 +1,27 @@
+--- a/channels/rdpecam/client/camera_device_main.c
++++ b/channels/rdpecam/client/camera_device_main.c
+@@ -300,6 +300,24 @@
+ 
+ 		while (stream->haveSample && stream->streaming)
+ 		{
++			/* H.264 samples cannot be dropped, so this thread waits for the next Sample
++			 * Request. A server that stops requesting samples without a Stop Streams Request
++			 * (e.g. after a Teams call) would otherwise keep the camera streaming until the
++			 * channel closes, because the idle check above is never reached again. */
++			const UINT64 idle = GetTickCount64() - stream->lastSampleRequestTime;
++			if (dev->ihal->RequestDrivenCapture && (stream->samplesRequested <= 0) &&
++			    (idle >= ECAM_CAPTURE_IDLE_TIMEOUT_MS))
++			{
++				WLog_INFO(TAG,
++				          "No sample requested for %" PRIu64
++				          " ms while a sample is pending, releasing capture device",
++				          idle);
++				stream->captureRunning = FALSE;
++				stream->haveSample = FALSE; /* stale after a restart */
++				ret = ECAM_SAMPLE_CAPTURE_DRAINED;
++				goto out;
++			}
++
+ 			LeaveCriticalSection(&stream->lock);
+ 
+ 			SleepEx(waitDelay, TRUE);

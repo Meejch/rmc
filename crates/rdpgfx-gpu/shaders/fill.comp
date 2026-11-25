@@ -1,0 +1,11 @@
+#version 450
+// SolidFill: writes `color` into rectangle `luma` (already clipped to the surface).
+#include "common.glsl"
+
+SURFACE_IMAGE
+
+void main() {
+    uint row, col;
+    if (!rect_pixel(pc.luma, row, col)) return;
+    imageStore(surface_img, ivec2(col, row), uvec4(pc.color, 0u, 0u, 0u));
+}

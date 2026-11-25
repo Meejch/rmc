@@ -1,0 +1,47 @@
+#version 450
+// Auxiliary view (NV12) -> the chroma samples the main view leaves out
+// (= model::avc444::apply_aux, MS-RDPEGFX 3.3.8.3.2 / 3.3.8.3.3).
+#include "common.glsl"
+
+layout(std430, set = 0, binding = 0) readonly buffer View { uint8_t nv12[]; };
+
+uint aux_u(uint crow, uint ccol) { return uint(nv12[pc.stride * pc.rows + crow * pc.stride + ccol * 2u]); }
+uint aux_v(uint crow, uint ccol) { return uint(nv12[pc.stride * pc.rows + crow * pc.stride + ccol * 2u + 1u]); }
+
+void main() {
+    uint row, col;
+    if (!area_pixel(row, col)) return;
+    uint at = row * pc.stride + col;
+    uint hw = pc.stride / 2u;
+    if (pc.layout_v2 == 0u) {
+        if ((row & 1u) == 1u) {
+            // B4/B5: odd rows come from aux luma rows; U in the first, V in the second half
+            // of the macroblock row.
+            uint base = row - row % 16u;
+            uint within = (row % 16u) / 2u;
+            su[at] = nv12[(base + within) * pc.stride + col];
+            sv[at] = nv12[(base + 8u + within) * pc.stride + col];
+        } else if ((col & 1u) == 1u) {
+            // B6/B7: odd columns of even rows.
+            su[at] = uint8_t(aux_u(row / 2u, col / 2u));
+            sv[at] = uint8_t(aux_v(row / 2u, col / 2u));
+        }
+    } else {
+        if ((col & 1u) == 1u) {
+            // B4/B5: odd columns, U left half, V right half of the aux luma row.
+            su[at] = nv12[row * pc.stride + col / 2u];
+            sv[at] = nv12[row * pc.stride + hw + col / 2u];
+        } else if ((row & 1u) == 1u) {
+            // B6..B9: even columns of odd rows.
+            uint c = col / 4u;
+            uint q = hw / 2u;
+            if (col % 4u == 0u) {
+                su[at] = uint8_t(aux_u(row / 2u, c));
+                sv[at] = uint8_t(aux_u(row / 2u, q + c));
+            } else {
+                su[at] = uint8_t(aux_v(row / 2u, c));
+                sv[at] = uint8_t(aux_v(row / 2u, q + c));
+            }
+        }
+    }
+}

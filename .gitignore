@@ -1,0 +1,18 @@
+# Build output
+/target/
+**/target/
+/fixtures/out/
+
+# Large or generated data
+*.h264
+*.yuv
+*.ppm
+*.perf
+perf.data*
+*.log
+
+# Local only: working notes, recordings, machine settings, assistant instructions.
+# Nothing in here may contain identifiers of real hosts or accounts in the repository.
+/local/
+/.cargo/config.toml
+/CLAUDE.md

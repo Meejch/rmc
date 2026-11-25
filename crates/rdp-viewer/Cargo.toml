@@ -1,0 +1,21 @@
+[package]
+name = "rdp-viewer"
+description = "Session views on Wayland: windows per output, windowed crop, connection bar, keyboard grab, cursor, local monitor layout"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+ab_glyph = "0.2"
+anyhow.workspace = true
+epaint_default_fonts = "0.37"
+winit.workspace = true
+raw-window-handle.workspace = true
+rdpgfx-gpu.workspace = true
+rdpgfx-model.workspace = true
+serde_json.workspace = true
+wayland-client = "0.31"
+wayland-backend = { version = "0.3", features = ["client_system"] }
+wayland-protocols = { version = "0.32", features = ["client", "unstable"] }
+wayland-protocols-plasma = { version = "0.3", features = ["client"] }

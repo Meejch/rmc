@@ -1,0 +1,16 @@
+[package]
+name = "rdp-session"
+description = "RDP session via libfreerdp 3 (thin C layer): connection, graphics pipeline events, input, frame acknowledgements"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+publish.workspace = true
+links = "rdpc-shim"
+build = "build.rs"
+
+[dependencies]
+anyhow.workspace = true
+rdpgfx-model.workspace = true
+
+[build-dependencies]
+cc = "1"

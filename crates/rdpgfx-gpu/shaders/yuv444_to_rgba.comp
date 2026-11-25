@@ -1,0 +1,35 @@
+#version 450
+// State (YUV 4:4:4) -> surface pixels (BGRA) inside the region rectangle `luma`, optional
+// reverse chroma filter (= model::avc444::sample_rgb and model::surface::SurfaceModel::avc,
+// colour conversion of MS-RDPEGFX 3.3.8.3.1).
+#include "common.glsl"
+
+SURFACE_IMAGE
+
+int reverse_filter(int avg, int right, int below, int diag) {
+    int rev = clamp(4 * avg - right - below - diag, 0, 255);
+    return abs(rev - avg) < 30 ? avg : rev;
+}
+
+void main() {
+    uint row, col;
+    if (!rect_pixel(pc.luma, row, col)) return;
+    if (col >= pc.width || row >= pc.height) return;
+    uint at = row * pc.stride + col;
+    int y = int(sy[at]);
+    int u = int(su[at]);
+    int v = int(sv[at]);
+    if (pc.reverse == 1u && (row & 1u) == 0u && (col & 1u) == 0u) {
+        uint below = at + pc.stride;
+        u = reverse_filter(u, int(su[at + 1u]), int(su[below]), int(su[below + 1u]));
+        v = reverse_filter(v, int(sv[at + 1u]), int(sv[below]), int(sv[below + 1u]));
+    }
+    int luma = 256 * y;
+    u -= 128;
+    v -= 128;
+    int r = clamp((luma + 403 * v) >> 8, 0, 255);
+    int g = clamp((luma - 48 * u - 120 * v) >> 8, 0, 255);
+    int b = clamp((luma + 475 * u) >> 8, 0, 255);
+    uint bgra = uint(b) | (uint(g) << 8) | (uint(r) << 16) | (255u << 24);
+    imageStore(surface_img, ivec2(col, row), uvec4(bgra, 0u, 0u, 0u));
+}

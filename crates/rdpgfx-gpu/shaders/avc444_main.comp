@@ -1,0 +1,18 @@
+#version 450
+// Main view (NV12) -> state: luma inside the luma rect, subsampled chroma to all four
+// samples of every 2x2 block in the area (= model::avc444::apply_main).
+#include "common.glsl"
+
+layout(std430, set = 0, binding = 0) readonly buffer View { uint8_t nv12[]; };
+
+void main() {
+    uint row, col;
+    if (!area_pixel(row, col)) return;
+    uint at = row * pc.stride + col;
+    if (col >= pc.luma.x && col < pc.luma.z && row >= pc.luma.y && row < pc.luma.w) {
+        sy[at] = nv12[at];
+    }
+    uint uv = pc.stride * pc.rows + (row / 2u) * pc.stride + (col / 2u) * 2u;
+    su[at] = nv12[uv];
+    sv[at] = nv12[uv + 1u];
+}
