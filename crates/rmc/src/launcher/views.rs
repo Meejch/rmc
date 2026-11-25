@@ -142,15 +142,24 @@ impl Launcher {
         let mut acts: Vec<Act> = Vec::new();
         ui.horizontal_top(|ui| {
             ui.allocate_ui_with_layout(vec2(left_w, avail.y), Layout::top_down(Align::Min), |ui| {
-                self.new_connection_card(ui);
-                ui.add_space(14.0);
-                self.connections_card(ui, &mut acts);
+                ui.set_max_width(left_w);
+                // scrolls only when the window is lower than the content
+                egui::ScrollArea::vertical()
+                    .id_salt("connect_left")
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        ui.set_max_width(left_w - 12.0);
+                        self.new_connection_card(ui);
+                        ui.add_space(14.0);
+                        self.connections_card(ui, &mut acts);
+                    });
             });
             ui.add_space(18.0);
             ui.allocate_ui_with_layout(
                 vec2(right_w, avail.y),
                 Layout::top_down(Align::Min),
                 |ui| {
+                    ui.set_max_width(right_w);
                     self.favorites_card(ui, &mut acts);
                 },
             );
@@ -269,7 +278,10 @@ impl Launcher {
     fn connections_card(&mut self, ui: &mut egui::Ui, acts: &mut Vec<Act>) {
         theme::card().show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.set_min_height(ui.available_height() - 34.0);
+            let h = ui.available_height() - 34.0;
+            if h.is_finite() {
+                ui.set_min_height(h.max(0.0));
+            }
             let running = self.sessions.iter().filter(|s| s.running()).count();
             let first = if running > 1 {
                 format!("Aktuelle Verbindungen ({running})")
@@ -489,11 +501,25 @@ impl Launcher {
                                             let (color, tip) = reach_color(self.reach.get(&f.name));
                                             theme::dot(ui, color, 11.0).on_hover_text(tip);
                                             ui.vertical(|ui| {
+                                                // leave room for the two buttons on the right
+                                                ui.set_max_width(
+                                                    (ui.available_width() - 100.0).max(80.0),
+                                                );
                                                 ui.spacing_mut().item_spacing.y = 2.0;
                                                 ui.horizontal(|ui| {
-                                                    ui.label(
-                                                        RichText::new(&f.name).strong().size(15.5),
-                                                    );
+                                                    let name_w = ui.available_width()
+                                                        - if live.is_some() { 90.0 } else { 0.0 };
+                                                    ui.scope(|ui| {
+                                                        ui.set_max_width(name_w.max(60.0));
+                                                        ui.add(
+                                                            egui::Label::new(
+                                                                RichText::new(&f.name)
+                                                                    .strong()
+                                                                    .size(15.5),
+                                                            )
+                                                            .truncate(),
+                                                        );
+                                                    });
                                                     if let Some(s) = live {
                                                         let (t, c) = state_short(s);
                                                         ui.label(RichText::new(t).small().color(c));
@@ -1042,7 +1068,18 @@ impl Launcher {
             }
             if let Some(m) = &self.message {
                 ui.add_space(12.0);
-                ui.label(RichText::new(m).italics().color(theme::WEAK));
+                // the buttons on the right need about 420 px
+                let w = (ui.available_width() - 420.0).max(80.0);
+                ui.allocate_ui_with_layout(
+                    vec2(w, 24.0),
+                    Layout::left_to_right(Align::Center),
+                    |ui| {
+                        ui.add(
+                            egui::Label::new(RichText::new(m).italics().color(theme::WEAK))
+                                .truncate(),
+                        );
+                    },
+                );
             }
             let mut quit = false;
             let mut stop = None;
@@ -1213,31 +1250,40 @@ fn state_short(s: &Running) -> (&'static str, egui::Color32) {
 /// One session in detail (mockup "Aktuelle Verbindung").
 fn session_big(ui: &mut egui::Ui, s: &Running, acts: &mut Vec<Act>) {
     let (state, color) = state_text(s);
-    ui.horizontal(|ui| {
-        ui.vertical(|ui| {
+    // Fixed column widths: long texts wrap or get shortened instead of widening the card.
+    let full = ui.available_width();
+    let pic_w = if full > 560.0 { 170.0 } else { 0.0 };
+    let text_w = (full - pic_w - 16.0).max(160.0);
+    ui.horizontal_top(|ui| {
+        ui.allocate_ui_with_layout(vec2(text_w, 0.0), Layout::top_down(Align::Min), |ui| {
+            ui.set_max_width(text_w);
             ui.horizontal(|ui| {
                 theme::dot(ui, Some(color), 13.0);
-                ui.label(RichText::new(&s.fav.name).size(22.0).strong());
+                ui.add(egui::Label::new(RichText::new(&s.fav.name).size(22.0).strong()).truncate());
             });
-            ui.label(theme::weak(if s.fav.user.is_empty() {
-                s.fav.host.clone()
-            } else {
-                format!("{} · {}", s.fav.host, s.fav.user)
-            }));
-            ui.horizontal(|ui| {
+            ui.add(
+                egui::Label::new(theme::weak(if s.fav.user.is_empty() {
+                    s.fav.host.clone()
+                } else {
+                    format!("{} · {}", s.fav.host, s.fav.user)
+                }))
+                .truncate(),
+            );
+            ui.horizontal_top(|ui| {
                 if matches!(s.state, State::Starting | State::Reconnecting) {
                     ui.spinner();
                 }
-                ui.label(RichText::new(&state).color(color));
+                ui.add(egui::Label::new(RichText::new(&state).color(color)).wrap());
             });
             if s.running() {
                 ui.label(theme::weak(format!("seit {}", elapsed(s.started.elapsed()))).small());
             }
         });
-        ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-            let (r, _) = ui.allocate_exact_size(vec2(170.0, 120.0), egui::Sense::hover());
+        if pic_w > 0.0 {
+            ui.add_space(16.0);
+            let (r, _) = ui.allocate_exact_size(vec2(pic_w, 120.0), egui::Sense::hover());
             icons::screen(ui.painter(), r, s.state == State::Connected);
-        });
+        }
     });
     ui.add_space(8.0);
     let r = ui.max_rect();
@@ -1247,41 +1293,47 @@ fn session_big(ui: &mut egui::Ui, s: &Running, acts: &mut Vec<Act>) {
         egui::Stroke::new(1.0, theme::BORDER),
     );
     ui.add_space(10.0);
+    let buttons_w = 180.0;
+    let grid_w = (full - buttons_w - 16.0).max(200.0);
     ui.horizontal_top(|ui| {
-        egui::Grid::new("session_details")
-            .num_columns(3)
-            .spacing([10.0, 8.0])
-            .show(ui, |ui| {
-                let rows = [
-                    (Icon::Server, "Ziel / Host", s.fav.host.clone()),
-                    (Icon::User, "Benutzer", s.fav.user.clone()),
-                    (
-                        Icon::Building,
-                        "Domäne",
-                        if s.fav.entra {
-                            "— (Entra ID)".to_string()
-                        } else if s.fav.domain.is_empty() {
-                            "— (lokales Konto)".to_string()
-                        } else {
-                            s.fav.domain.clone()
-                        },
-                    ),
-                ];
-                let mut rows = rows.to_vec();
-                if let Some(g) = &s.gpu {
-                    let short = g.split(", Darstellung").next().unwrap_or(g);
-                    rows.push((Icon::Monitor, "Grafik", short.to_string()));
-                }
-                for (icon, k, v) in rows {
-                    let (r, _) = ui.allocate_exact_size(vec2(20.0, 20.0), egui::Sense::hover());
-                    icons::paint(ui.painter(), r, icon, theme::WEAK);
-                    ui.label(theme::weak(k));
-                    ui.label(v);
-                    ui.end_row();
-                }
-            });
+        ui.allocate_ui_with_layout(vec2(grid_w, 0.0), Layout::top_down(Align::Min), |ui| {
+            ui.set_max_width(grid_w);
+            egui::Grid::new("session_details")
+                .num_columns(3)
+                .spacing([10.0, 8.0])
+                .max_col_width(grid_w - 130.0)
+                .show(ui, |ui| {
+                    let rows = [
+                        (Icon::Server, "Ziel / Host", s.fav.host.clone()),
+                        (Icon::User, "Benutzer", s.fav.user.clone()),
+                        (
+                            Icon::Building,
+                            "Domäne",
+                            if s.fav.entra {
+                                "— (Entra ID)".to_string()
+                            } else if s.fav.domain.is_empty() {
+                                "— (lokales Konto)".to_string()
+                            } else {
+                                s.fav.domain.clone()
+                            },
+                        ),
+                    ];
+                    let mut rows = rows.to_vec();
+                    if let Some(g) = &s.gpu {
+                        let short = g.split(", Darstellung").next().unwrap_or(g);
+                        rows.push((Icon::Monitor, "Grafik", short.to_string()));
+                    }
+                    for (icon, k, v) in rows {
+                        let (r, _) = ui.allocate_exact_size(vec2(20.0, 20.0), egui::Sense::hover());
+                        icons::paint(ui.painter(), r, icon, theme::WEAK);
+                        ui.label(theme::weak(k));
+                        ui.add(egui::Label::new(v).truncate());
+                        ui.end_row();
+                    }
+                });
+        });
         ui.with_layout(Layout::top_down(Align::Max), |ui| {
-            session_buttons(ui, s, acts, 200.0);
+            session_buttons(ui, s, acts, buttons_w);
         });
     });
 }
@@ -1295,11 +1347,17 @@ fn session_row(ui: &mut egui::Ui, s: &Running, acts: &mut Vec<Act>) {
             theme::dot(ui, Some(color), 11.0);
             ui.vertical(|ui| {
                 ui.spacing_mut().item_spacing.y = 2.0;
+                ui.set_max_width((ui.available_width() - 140.0).max(120.0));
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(&s.fav.name).strong());
-                    ui.label(RichText::new(&state).small().color(color));
+                    ui.add(egui::Label::new(RichText::new(&state).small().color(color)).truncate());
                 });
-                ui.label(theme::weak(format!("{} · {}", s.fav.host, s.fav.user)).small());
+                ui.add(
+                    egui::Label::new(
+                        theme::weak(format!("{} · {}", s.fav.host, s.fav.user)).small(),
+                    )
+                    .truncate(),
+                );
             });
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.horizontal(|ui| session_buttons_compact(ui, s, acts));
