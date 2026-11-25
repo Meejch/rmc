@@ -1684,8 +1684,12 @@ fn main() -> Result<()> {
     // No arguments: the launcher. `connect <favorite>`: a session with the favorite's options.
     let argv: Vec<String> = std::env::args().collect();
     if argv.get(1).map(String::as_str) == Some("install-desktop") {
-        // Menu entry for this binary (tools/install-local.sh; AppImages do it at start).
-        let exe = std::env::current_exe()?;
+        // Menu entry for this binary (tools/install-local.sh; AppImages do it at start). In an
+        // AppImage the binary lives in a temporary mount: the entry must name the AppImage.
+        let exe = match std::env::var_os("APPIMAGE") {
+            Some(img) => std::path::PathBuf::from(img),
+            None => std::env::current_exe()?,
+        };
         let f = desktop::install(&exe)?;
         println!(
             "Startmenü-Eintrag: {} (Exec={})",

@@ -2,6 +2,12 @@
 
 Alle nennenswerten Änderungen an RMC. Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), die Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Behoben
+
+- `rmc install-desktop` aus dem AppImage trug den temporären Mount-Pfad statt des AppImage ein.
+
 ## [1.0.0] – 2026-11-25
 
 ### Hinzugefügt
