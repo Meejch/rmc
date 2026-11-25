@@ -100,8 +100,8 @@ fn window_options() -> eframe::NativeOptions {
             .with_title(TITLE)
             .with_app_id("rmc")
             .with_icon(window_icon())
-            .with_inner_size([1280.0, 880.0])
-            .with_min_inner_size([1100.0, 760.0]),
+            .with_inner_size([1280.0, 910.0])
+            .with_min_inner_size([1100.0, 790.0]),
         ..Default::default()
     }
 }

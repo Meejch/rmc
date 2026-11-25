@@ -57,7 +57,12 @@ impl Launcher {
                 egui::Frame::new()
                     .fill(theme::CARD)
                     .stroke(egui::Stroke::new(1.0, theme::BORDER))
-                    .inner_margin(egui::Margin::symmetric(20, 10)),
+                    .inner_margin(egui::Margin {
+                        left: 20,
+                        right: 20,
+                        top: 10,
+                        bottom: 6,
+                    }),
             )
             .show(ui, |ui| self.footer(ui));
         egui::CentralPanel::default()
@@ -1115,6 +1120,19 @@ impl Launcher {
                 self.disconnect(&n);
             }
         });
+        // version: one small, quiet line below the buttons
+        ui.add_space(2.0);
+        ui.allocate_ui_with_layout(
+            vec2(ui.available_width(), 14.0),
+            Layout::right_to_left(Align::Center),
+            |ui| {
+                ui.label(
+                    RichText::new(concat!("Version ", env!("CARGO_PKG_VERSION")))
+                        .size(11.0)
+                        .color(theme::WEAK),
+                );
+            },
+        );
     }
 }
 
