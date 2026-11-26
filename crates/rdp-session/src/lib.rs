@@ -118,6 +118,7 @@ mod ffi {
         pub fn rdpc_session_free(s: *mut RdpcSession);
         pub fn rdpc_send_key(s: *mut RdpcSession, scancode: u32, extended: u32, down: u32) -> i32;
         pub fn rdpc_send_mouse(s: *mut RdpcSession, flags: u32, x: u32, y: u32) -> i32;
+        pub fn rdpc_send_sync(s: *mut RdpcSession, flags: u32) -> i32;
         pub fn rdpc_send_frame_ack(
             s: *mut RdpcSession,
             frame_id: u32,
@@ -633,6 +634,13 @@ pub mod mouse {
     }
 }
 
+/// Lock key flags of the synchronize event (MS-RDPBCGR 2.2.8.1.1.3.1.1.5).
+pub mod sync {
+    pub const SCROLL_LOCK: u32 = 0x01;
+    pub const NUM_LOCK: u32 = 0x02;
+    pub const CAPS_LOCK: u32 = 0x04;
+}
+
 /// Sends input and acknowledgements; cheap to clone, usable from any thread.
 #[derive(Clone)]
 pub struct SessionHandle(Arc<Inner>);
@@ -652,6 +660,11 @@ impl SessionHandle {
     /// `flags` from [`mouse`]; coordinates on the session desktop.
     pub fn send_mouse(&self, flags: u32, x: u32, y: u32) {
         unsafe { ffi::rdpc_send_mouse(self.0.raw, flags, x.min(0xFFFF), y.min(0xFFFF)) };
+    }
+
+    /// Sets the server's lock keys (flags from [`sync`]).
+    pub fn sync_locks(&self, flags: u32) {
+        unsafe { ffi::rdpc_send_sync(self.0.raw, flags) };
     }
 
     /// RDPGFX_FRAME_ACKNOWLEDGE_PDU.

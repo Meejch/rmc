@@ -45,7 +45,8 @@ enum cmd_type
 	CMD_CLIP_RESPONSE,
 	CMD_CLIP_FILE_REQUEST,
 	CMD_CLIP_FILE_RESPONSE,
-	CMD_ADD_DEVICE
+	CMD_ADD_DEVICE,
+	CMD_SYNC
 };
 
 typedef struct
@@ -1286,6 +1287,12 @@ int rdpc_send_mouse(rdpc_session* s, uint32_t flags, uint32_t x, uint32_t y)
 	return queue_cmd(s, c);
 }
 
+int rdpc_send_sync(rdpc_session* s, uint32_t flags)
+{
+	rdpc_cmd c = { CMD_SYNC, flags, 0, 0, 0, NULL, 0 };
+	return queue_cmd(s, c);
+}
+
 int rdpc_send_frame_ack(rdpc_session* s, uint32_t frame_id, uint32_t total_decoded,
                         uint32_t queue_depth)
 {
@@ -1410,6 +1417,10 @@ static BOOL drain_queue(rdpc_session* s)
 					else
 						ok = freerdp_input_send_mouse_event(input, (UINT16)c->a, (UINT16)c->b,
 						                                    (UINT16)c->c);
+					break;
+				case CMD_SYNC:
+					/* toggle key states (KBD_SYNC_*), as on focus-in in mstsc */
+					ok = freerdp_input_send_synchronize_event(input, c->a);
 					break;
 				case CMD_ACK:
 					if (s->gfx && s->gfx->FrameAcknowledge)

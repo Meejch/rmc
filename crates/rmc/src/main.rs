@@ -553,6 +553,10 @@ impl Client {
                 self.connected = true;
                 self.desktop = (width, height);
                 println!("Verbunden: Desktop {width}x{height}");
+                // Windows starts with its own lock state: take over the local one
+                if let Some(flags) = keymap::host_lock_flags() {
+                    self.handle.sync_locks(flags);
+                }
             }
             Event::Disconnected { code, message } => {
                 println!("Getrennt: {message}");
@@ -1172,6 +1176,17 @@ impl App {
                 }
             }
             Input::ReleaseAll => self.release_keys(),
+            Input::SyncLocks => self.sync_locks(),
+        }
+    }
+
+    /// Gives the session the local state of the lock keys (on connect and on focus).
+    fn sync_locks(&self) {
+        let Some(c) = self.client.as_ref().filter(|c| c.connected) else {
+            return;
+        };
+        if let Some(flags) = keymap::host_lock_flags() {
+            c.handle.sync_locks(flags);
         }
     }
 

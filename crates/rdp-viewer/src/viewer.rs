@@ -90,6 +90,8 @@ pub enum Input {
     },
     /// Focus lost: release every pressed key.
     ReleaseAll,
+    /// Focus gained: take over the local lock keys (Num Lock, Caps Lock, Scroll Lock).
+    SyncLocks,
 }
 
 #[derive(Clone, Debug)]
@@ -1192,9 +1194,11 @@ impl Viewer {
                     self.focus_events += 1;
                     println!("Hinweis: Testfenster hat den Fokus bekommen");
                 }
-                if !focused {
-                    out.push(Action::Input(Input::ReleaseAll));
-                }
+                out.push(Action::Input(if focused {
+                    Input::SyncLocks
+                } else {
+                    Input::ReleaseAll
+                }));
             }
             WindowEvent::ModifiersChanged(m) => self.modifiers = m.state(),
             WindowEvent::KeyboardInput { event, .. } => {

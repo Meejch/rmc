@@ -164,3 +164,69 @@ mod tests {
         }
     }
 }
+
+/// Local lock key state as synchronize flags (`rdp_session::sync`), read from the keyboard LEDs
+/// in `/sys/class/leds` (the compositor keeps them in step with its lock state; readable without
+/// extra permissions, also under X11). `None` when no keyboard exposes LEDs.
+pub fn host_lock_flags() -> Option<u32> {
+    host_lock_flags_in(std::path::Path::new("/sys/class/leds"))
+}
+
+fn host_lock_flags_in(dir: &std::path::Path) -> Option<u32> {
+    use rdp_session::sync;
+    let mut found = false;
+    let mut flags = 0;
+    for entry in std::fs::read_dir(dir).ok()?.flatten() {
+        let name = entry.file_name();
+        let Some(kind) = name
+            .to_str()
+            .and_then(|n| n.rsplit_once("::"))
+            .map(|(_, k)| k)
+        else {
+            continue;
+        };
+        let bit = match kind {
+            "numlock" => sync::NUM_LOCK,
+            "capslock" => sync::CAPS_LOCK,
+            "scrolllock" => sync::SCROLL_LOCK,
+            _ => continue,
+        };
+        let Ok(v) = std::fs::read_to_string(entry.path().join("brightness")) else {
+            continue;
+        };
+        found = true;
+        // several keyboards: one lit LED counts (the compositor sets all of them alike)
+        if v.trim().parse::<u32>().is_ok_and(|b| b > 0) {
+            flags |= bit;
+        }
+    }
+    found.then_some(flags)
+}
+
+#[cfg(test)]
+mod lock_tests {
+    use super::*;
+
+    #[test]
+    fn lock_flags_from_leds() {
+        let dir = std::env::temp_dir().join(format!("rmc-leds-{}", std::process::id()));
+        let led = |name: &str, v: &str| {
+            let d = dir.join(name);
+            std::fs::create_dir_all(&d).unwrap();
+            std::fs::write(d.join("brightness"), v).unwrap();
+        };
+        assert_eq!(host_lock_flags_in(&dir), None);
+        std::fs::create_dir_all(&dir).unwrap();
+        led("input3::numlock", "0\n");
+        led("input3::capslock", "0\n");
+        led("phy0-led", "1\n");
+        assert_eq!(host_lock_flags_in(&dir), Some(0));
+        led("input7::numlock", "1\n");
+        led("input3::scrolllock", "1\n");
+        assert_eq!(
+            host_lock_flags_in(&dir),
+            Some(rdp_session::sync::NUM_LOCK | rdp_session::sync::SCROLL_LOCK)
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+}

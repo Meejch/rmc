@@ -106,6 +106,7 @@ Jede Verbindung mit Beginn, Dauer und Ergebnis, dazu „Log anzeigen“ und „E
   - Dateien aus Windows landen beim Einfügen zuerst unter `~/.cache/rmc/clipboard/`.
   - Während einer Dateiübertragung zeigt ein Streifen unter der Leiste Prozent und Restzeit, das X bricht ab. Ist die Sitzung minimiert, zeigt KDE den Fortschritt im Benachrichtigungsbereich.
 - **Ton, Mikrofon, Kamera:** werden nach Windows umgeleitet. Die Kamera geht nach einem Videoanruf wieder aus.
+- **Num Lock, Feststelltaste, Rollen:** Windows übernimmt beim Verbinden und jedes Mal, wenn das Sitzungsfenster den Fokus bekommt, den Zustand dieses Rechners. Gelesen wird er aus den Tastatur-LEDs (`/sys/class/leds`); ohne Tastatur mit LEDs bleibt Windows bei seinem eigenen Zustand.
 
 ### Tastenkürzel
 

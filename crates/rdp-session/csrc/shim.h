@@ -149,6 +149,8 @@ void rdpc_session_free(rdpc_session* s);
 /* Thread-safe, queued to the session thread. Return 0 on success. */
 int rdpc_send_key(rdpc_session* s, uint32_t scancode, uint32_t extended, uint32_t down);
 int rdpc_send_mouse(rdpc_session* s, uint32_t flags, uint32_t x, uint32_t y);
+/* Synchronize event: state of the lock keys (KBD_SYNC_SCROLL_LOCK 1, NUM_LOCK 2, CAPS_LOCK 4). */
+int rdpc_send_sync(rdpc_session* s, uint32_t flags);
 int rdpc_send_frame_ack(rdpc_session* s, uint32_t frame_id, uint32_t total_decoded,
                         uint32_t queue_depth);
 /* Clipboard: announce local formats ("id\tname\n" lines), request server data for a format
