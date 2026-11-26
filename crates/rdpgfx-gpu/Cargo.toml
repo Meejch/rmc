@@ -4,6 +4,7 @@ description = "GPU core: hardware H.264 decode (FFmpeg/NVDEC), AVC444 combinatio
 edition.workspace = true
 version.workspace = true
 license.workspace = true
+repository.workspace = true
 publish.workspace = true
 
 [dependencies]

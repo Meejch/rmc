@@ -4,6 +4,7 @@ description = "Synthetic AVC420/AVC444 test streams (generator and verifier) for
 edition.workspace = true
 version.workspace = true
 license.workspace = true
+repository.workspace = true
 publish.workspace = true
 
 [lib]

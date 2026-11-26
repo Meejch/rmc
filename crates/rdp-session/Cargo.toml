@@ -4,6 +4,7 @@ description = "RDP session via libfreerdp 3 (thin C layer): connection, graphics
 edition.workspace = true
 version.workspace = true
 license.workspace = true
+repository.workspace = true
 publish.workspace = true
 links = "rdpc-shim"
 build = "build.rs"

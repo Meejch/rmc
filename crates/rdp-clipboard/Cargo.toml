@@ -4,6 +4,7 @@ description = "Wayland clipboard via ext-data-control (read/offer without window
 edition.workspace = true
 version.workspace = true
 license.workspace = true
+repository.workspace = true
 publish.workspace = true
 
 [dependencies]

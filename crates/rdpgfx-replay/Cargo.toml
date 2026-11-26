@@ -4,6 +4,7 @@ description = "Replays fixture streams through the GPU core into Wayland windows
 edition.workspace = true
 version.workspace = true
 license.workspace = true
+repository.workspace = true
 publish.workspace = true
 
 [dependencies]

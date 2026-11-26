@@ -419,7 +419,7 @@ impl Decoder {
     pub fn coded_size(&mut self, au: &[u8]) -> Option<(u32, u32)> {
         unsafe {
             if self.parser.is_null() {
-                self.parser = ff::av_parser_init(ff::AVCodecID::AV_CODEC_ID_H264 as i32);
+                self.parser = ff::av_parser_init(CodecIdArg::h264());
                 if self.parser.is_null() {
                     return None;
                 }
@@ -597,3 +597,21 @@ impl Drop for Decoder {
 
 /// A 128x128 H.264 IDR picture (main profile, grey, Annex B) for probing a hardware decoder.
 const PROBE_H264: &[u8] = include_bytes!("probe-128.bin");
+
+/// `av_parser_init` takes an `int` up to FFmpeg 8 and an `enum AVCodecID` from FFmpeg 9 on;
+/// the parameter type picks the matching value.
+trait CodecIdArg {
+    fn h264() -> Self;
+}
+
+impl CodecIdArg for i32 {
+    fn h264() -> Self {
+        ff::AVCodecID::AV_CODEC_ID_H264 as i32
+    }
+}
+
+impl CodecIdArg for ff::AVCodecID {
+    fn h264() -> Self {
+        ff::AVCodecID::AV_CODEC_ID_H264
+    }
+}

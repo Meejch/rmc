@@ -4,6 +4,7 @@ description = "Session views on Wayland: windows per output, windowed crop, conn
 edition.workspace = true
 version.workspace = true
 license.workspace = true
+repository.workspace = true
 publish.workspace = true
 
 [dependencies]
