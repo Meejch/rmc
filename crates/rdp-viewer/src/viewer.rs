@@ -280,6 +280,8 @@ pub struct Viewer {
     mode: Mode,
     windows: Vec<Win>,
     modifiers: ModifiersState,
+    /// Wheel movement below one notch (x, y), kept for the next event (hi-res wheels, touchpads).
+    wheel_rest: (f64, f64),
     bar: Bar,
     minimized: bool,
     crop: Rect,
@@ -330,6 +332,7 @@ impl Viewer {
             mode,
             windows: Vec::new(),
             modifiers: ModifiersState::empty(),
+            wheel_rest: (0.0, 0.0),
             bar: Bar {
                 hover: -1,
                 pinned,
@@ -1481,7 +1484,8 @@ impl Viewer {
                 } else if let Some(pos) = self.windows[wi].cursor
                     && let Some((x, y)) = self.session_point(core, wi, pos)
                 {
-                    let (dx, dy) = (fx.round() as i32, fy.round() as i32);
+                    let (dx, dy);
+                    (dx, dy, self.wheel_rest) = wheel_notches(self.wheel_rest, fx, fy);
                     if dx != 0 || dy != 0 {
                         out.push(Action::Input(Input::Wheel { dx, dy, x, y }));
                     }
@@ -1662,4 +1666,35 @@ fn debug(msg: impl FnOnce() -> String) {
 pub fn monitor_by_name(el: &ActiveEventLoop, name: &str) -> Option<MonitorHandle> {
     el.available_monitors()
         .find(|m| m.name().as_deref() == Some(name))
+}
+
+/// Whole wheel notches for RDP from a winit scroll delta in lines, plus the remainder for the
+/// next event. winit: positive x = scroll left, positive y = up; RDP: positive = right / up.
+fn wheel_notches(rest: (f64, f64), fx: f64, fy: f64) -> (i32, i32, (f64, f64)) {
+    let ax = rest.0 - fx;
+    let ay = rest.1 + fy;
+    let (dx, dy) = (ax.trunc() as i32, ay.trunc() as i32);
+    (dx, dy, (ax - f64::from(dx), ay - f64::from(dy)))
+}
+
+#[cfg(test)]
+mod wheel_tests {
+    use super::wheel_notches;
+
+    #[test]
+    fn horizontal_sign_and_partial_notches() {
+        // scroll left (winit +x) = negative for RDP, scroll right = positive
+        assert_eq!(wheel_notches((0.0, 0.0), 1.0, 0.0).0, -1);
+        assert_eq!(wheel_notches((0.0, 0.0), -1.0, 0.0).0, 1);
+        assert_eq!(wheel_notches((0.0, 0.0), 0.0, 1.0).1, 1);
+        // a hi-res wheel in eighth notches: one notch after eight events, none lost
+        let mut rest = (0.0, 0.0);
+        let mut total = 0;
+        for _ in 0..16 {
+            let (_, dy, r) = wheel_notches(rest, 0.0, -0.125);
+            rest = r;
+            total += dy;
+        }
+        assert_eq!(total, -2);
+    }
 }

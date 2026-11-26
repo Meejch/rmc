@@ -2,6 +2,18 @@
 
 Alle nennenswerten Änderungen an RMC. Das Format folgt [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), die Versionen folgen [Semantic Versioning](https://semver.org/lang/de/).
 
+## [Unveröffentlicht]
+
+### Hinzugefügt
+
+- Num Lock, Feststelltaste und Rollen-Taste: Windows übernimmt den Zustand des Rechners beim Verbinden, nach einem Reconnect und bei jedem Fokuswechsel ins Sitzungsfenster.
+
+### Behoben
+
+- Horizontales Scrollen kam in Windows seitenverkehrt an.
+- Mausräder mit feiner Rasterung (hochauflösende Räder, Freilauf) und Touchpads verloren Bewegungen unter einem Rastschritt.
+- Bau mit FFmpeg 9 (z. B. Fedora 45).
+
 ## [1.0.0] – 2026-11-25
 
 ### Hinzugefügt
