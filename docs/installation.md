@@ -5,8 +5,8 @@ Am einfachsten ist das **AppImage** aus den [Releases](https://github.com/Meejch
 ## AppImage
 
 ```sh
-chmod +x RMC-1.0.0-x86_64.AppImage
-./RMC-1.0.0-x86_64.AppImage
+chmod +x RMC-1.0.1-x86_64.AppImage
+./RMC-1.0.1-x86_64.AppImage
 ```
 
 - **Startmenü:** Beim ersten Start legt RMC den Eintrag „RMC“ mit Logo an. Wird das AppImage verschoben, korrigiert der nächste Start den Eintrag. Ein Eintrag einer aus dem Quellcode installierten Version bleibt unangetastet.

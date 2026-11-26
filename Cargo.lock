@@ -2517,7 +2517,7 @@ dependencies = [
 
 [[package]]
 name = "rdp-clipboard"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "libc",
@@ -2528,7 +2528,7 @@ dependencies = [
 
 [[package]]
 name = "rdp-session"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "cc",
@@ -2537,7 +2537,7 @@ dependencies = [
 
 [[package]]
 name = "rdp-viewer"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "ab_glyph",
  "anyhow",
@@ -2555,7 +2555,7 @@ dependencies = [
 
 [[package]]
 name = "rdpgfx-fixtures"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2567,7 +2567,7 @@ dependencies = [
 
 [[package]]
 name = "rdpgfx-gpu"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "ash",
@@ -2585,7 +2585,7 @@ dependencies = [
 
 [[package]]
 name = "rdpgfx-model"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "rayon",
  "serde",
@@ -2593,7 +2593,7 @@ dependencies = [
 
 [[package]]
 name = "rdpgfx-replay"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2681,7 +2681,7 @@ checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 
 [[package]]
 name = "rmc"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "cc",
